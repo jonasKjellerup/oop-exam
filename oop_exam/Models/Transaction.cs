@@ -5,7 +5,7 @@ namespace oop_exam.Models
 {
 	public abstract class Transaction
 	{
-		public uint Id { get; }
+		public uint Id { get; set; }
 		public User User { get; }
 		public DateTime Date { get; }
 		public decimal Amount { get; }

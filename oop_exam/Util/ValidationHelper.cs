@@ -42,5 +42,7 @@ namespace oop_exam.Util
 			if (!UsernameRegex.IsMatch(name))
 				throw new ArgumentException("Invalid username given.");
 		}
+
+		public static bool IsValidUsername(string name) => UsernameRegex.IsMatch(name);
 	}
 }

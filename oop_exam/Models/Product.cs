@@ -20,7 +20,7 @@ namespace oop_exam.Models
 			}
 		}
 
-		private string _name;
+		private string _name = null!;
 
 		[CsvField("name")]
 		public string Name
@@ -35,22 +35,35 @@ namespace oop_exam.Models
 		
 		[CsvField("price")]
 		public decimal Price { get; set; }
+
+		private bool _active;
 		
 		// This is to ensure proper csv formatting.
 		[CsvField("active")]
-		public virtual int ActiveNumeric
+		public int ActiveNumeric
 		{
 			get => Active ? 1 : 0;
 			set => Active = value != 0;
 		}
-		
-		public virtual bool Active { get; set; }
+
+		public virtual bool Active
+		{
+			get => _active;
+			set => _active = value;
+		}
 		
 		public bool CanBeBoughtOnCredit { get; set; }
 
-		public Product()
+		protected Product(uint id, string name, decimal price)
 		{
-			// TODO skal være fornuftig
+			Id = id;
+			Name = name;
+			Price = price;
+		}
+
+		public Product(uint id, string name, decimal price, bool active = true) : this(id, name, price)
+		{
+			_active = active;
 		}
 
 		public override string ToString() => $"{Id} - {Name} - {Price}";

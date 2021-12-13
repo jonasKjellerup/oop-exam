@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Runtime.Serialization;
 using System.Text;
 using oop_exam.Exceptions;
 
@@ -17,14 +18,9 @@ namespace oop_exam.Csv
             RowEnd,
             StreamEnd,
         }
-
-        private readonly char _separator;
+        
         private readonly List<byte> _workBuffer = new();
 
-        public CsvSerializer(char separator)
-        {
-            _separator = separator;
-        }
 
         /// <summary>
         /// Converts the work buffer to a utf-8 string without first
@@ -36,7 +32,24 @@ namespace oop_exam.Csv
             return Encoding.UTF8.GetString(CollectionsMarshal.AsSpan(_workBuffer));
         }
 
-        private (ReadState, string) ReadValue(Stream stream)
+        private static PropertyInfo[] GetMarkedProperties(Type t)
+        {
+            var markedProperties = t.GetProperties()
+                .Where(p => p.GetCustomAttribute<CsvFieldAttribute>() is not null)
+                .ToArray();
+
+            if (!markedProperties.Any())
+                throw new Exception($"Type {t.Name} has no properties marked as csv fields.");
+
+            // We only support serialization of primitive, decimal, and string values.
+            // This ensures that all of the selected properties are match these criteria. 
+            if (markedProperties.Any(p => !p.PropertyType.IsPrimitive && p.PropertyType != typeof(string) && p.PropertyType != typeof(decimal)))
+                throw new CsvSerializationException("Can not serialize csv value to non primitive/string/decimal type.");
+
+            return markedProperties;
+        }
+        
+        private (ReadState, string) ReadValue(Stream stream, char separator)
         {
             try
             {
@@ -51,11 +64,11 @@ namespace oop_exam.Csv
                         return (ReadState.StreamEnd, "");
                     }
 
-                    if (b == _separator || b == '\n')
+                    if (b == separator || b == '\n')
                     {
                         if (quoted)
                             throw new CsvSerializationException(
-                                $"Expected `\"` before `{_separator}` got `{(char) b}`");
+                                $"Expected `\"` before `{separator}` got `{(char) b}`");
                         var state = b == '\n' ? ReadState.RowEnd : ReadState.ValueEnd;
                         var value = WorkBufferToUtf8();
                         return (state, value);
@@ -80,8 +93,8 @@ namespace oop_exam.Csv
                         var state = (char) next switch
                         {
                             '\n' => ReadState.RowEnd,
-                            _ when next == _separator => ReadState.ValueEnd,
-                            _ => throw new Exception($"Expected either `\n` or `{_separator}` following closing `\"`")
+                            _ when next == separator => ReadState.ValueEnd,
+                            _ => throw new Exception($"Expected either `\n` or `{separator}` following closing `\"`")
                         };
 
                         return (state, WorkBufferToUtf8());
@@ -96,22 +109,13 @@ namespace oop_exam.Csv
             }
         }
 
-        public List<T> Deserialize<T>(Stream src)
+        public List<T> Deserialize<T>(Stream src, char separator)
         {
+            _workBuffer.Clear();
+            
             // Get type metadata through reflection
             var targetType = typeof(T);
-            var markedProperties = targetType
-                .GetProperties()
-                .Where(p => p.GetCustomAttribute<CsvFieldAttribute>() is not null)
-                .ToArray();
-
-            if (!markedProperties.Any())
-                throw new Exception($"Type {targetType.Name} has no properties marked as csv fields.");
-
-            // We only support deserialization of primitive, decimal, and string values.
-            // This ensures that all of the selected properties are match these criteria. 
-            if (markedProperties.Any(p => !p.PropertyType.IsPrimitive && p.PropertyType != typeof(string) && p.PropertyType != typeof(decimal)))
-                throw new CsvSerializationException("Can not serialize csv value to non primitive/string/decimal type.");
+            var markedProperties = GetMarkedProperties(targetType);
 
             // Read the title row (the first row)
             var csvColumnNames = new List<string>();
@@ -121,7 +125,7 @@ namespace oop_exam.Csv
 
             do
             {
-                (state, value) = ReadValue(src);
+                (state, value) = ReadValue(src, separator);
                 if (state == ReadState.StreamEnd)
                     throw new CsvSerializationException("Unexpected end of stream while parsing title row");
 
@@ -148,10 +152,10 @@ namespace oop_exam.Csv
 
             // Parse each row as a instance of T
             var rows = new List<T>();
-            var instance = Activator.CreateInstance(targetType)!;
+            var instance = FormatterServices.GetUninitializedObject(targetType);
             var column = 0;
             
-            (state, value) = ReadValue(src);
+            (state, value) = ReadValue(src, separator);
             while (state != ReadState.StreamEnd)
             {
                 var targetProperty = columnProperties[column++];
@@ -171,15 +175,50 @@ namespace oop_exam.Csv
                     
                     rows.Add((T)instance);
                     
-                    instance = Activator.CreateInstance(targetType)!;
+                    instance = FormatterServices.GetUninitializedObject(targetType);
                     column = 0;
                 } else if (column >= csvColumnNames.Count)
                     throw new CsvSerializationException("Inconsistent csv format: too many values in row");
 
-                (state, value) = ReadValue(src);
+                (state, value) = ReadValue(src, separator);
             }
 
             return rows;
+        }
+
+        public string Serialize<T>(IEnumerable<T> src, char separator)
+        {
+            _workBuffer.Clear();
+            
+            // Get type metadata through reflection
+            var targetType = typeof(T);
+            var markedProperties = GetMarkedProperties(targetType);
+
+            for (var i = 0; i < markedProperties.Length; i++)
+            {
+                if (i > 0)
+                    _workBuffer.Add((byte)separator);
+                var property = markedProperties[i];
+                _workBuffer.AddRange(Encoding.UTF8.GetBytes(property.GetCustomAttribute<CsvFieldAttribute>()!.Name));
+            }
+            _workBuffer.Add((byte)'\n');
+
+            foreach (var obj in src)
+            {
+                for (var i = 0; i < markedProperties.Length; i++)
+                {
+                    if (i > 0) 
+                        _workBuffer.Add((byte)separator);
+                    var value = markedProperties[i].GetValue(obj);
+                    if (value is null)
+                        throw new CsvSerializationException($"Unable to serialize property {markedProperties[i].Name}. Value is null.");
+                    
+                    _workBuffer.AddRange(Encoding.UTF8.GetBytes(value.ToString()!));
+                }
+                _workBuffer.Add((byte) '\n');
+            }
+
+            return WorkBufferToUtf8();
         }
     }
 }
