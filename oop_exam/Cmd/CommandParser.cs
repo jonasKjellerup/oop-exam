@@ -30,14 +30,14 @@ namespace oop_exam.Cmd
 
 			var strings =  input
 				.Split(' ')
-				.Where(s => s.Length > 0) // Remove empty strings
+				.Where(s => !string.IsNullOrWhiteSpace(s)) // Remove empty strings
 				.ToArray();
 
 			return strings[0][0] switch
 			{
 				':' => new AdminCommand(strings[0], strings[1..]),
 				_ when ValidationHelper.IsValidUsername(strings[0]) is false 
-					=> throw new ArgumentException("Invalid command input"),
+					=> throw new ArgumentException("Invalid command input. Expected valid username or admin command."),
 				_ when strings.Length > 1 => BuildBuyCommand(strings),
 				_ => new UserCommand(strings[0])
 			};

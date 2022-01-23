@@ -36,10 +36,10 @@ namespace oop_exam.Models
 		[CsvField("price")]
 		public decimal Price { get; set; }
 
-		private bool _active;
+		protected bool _active;
 		
 		// This is to ensure proper csv formatting.
-		[CsvField("active")]
+		[CsvField("active")] 
 		public int ActiveNumeric
 		{
 			get => Active ? 1 : 0;

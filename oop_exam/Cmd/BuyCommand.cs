@@ -44,7 +44,7 @@ namespace oop_exam.Cmd
 
             var transaction = new BuyTransaction(product, user);
             for (var i = Count; i > 0; i--)
-                stregsystem.ExecuteTransaction(transaction);
+                stregsystem.ExecuteTransaction(transaction.Clone());
 
             ui.DisplayUserBuysProduct(Count, transaction);
         }

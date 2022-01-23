@@ -6,9 +6,9 @@ namespace oop_exam
 	{
 		private static void Main(string[] args)
 		{
-			var stregsystem = new Stregsystem();
+			using var stregsystem = new Stregsystem();
 			var ui = new StregsystemCLI(stregsystem);
-			var controller = new StregsystemController(ui, stregsystem);
+			var _ = new StregsystemController(ui, stregsystem);
 			
 			ui.Start();
 		}

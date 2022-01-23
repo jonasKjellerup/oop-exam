@@ -67,7 +67,7 @@ namespace oop_exam.UI
 			Console.WriteLine("Available products:");
 			foreach (var product in _stregsystem.ActiveProducts)
 			{
-				Console.WriteLine($"{product.Id}: {product.Name}");
+				Console.WriteLine($"{product.Id}: {product.Name} - {product.Price}");
 			}
 		}
 		

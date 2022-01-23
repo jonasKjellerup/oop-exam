@@ -186,6 +186,42 @@ namespace oop_exam.Csv
             return rows;
         }
 
+        public static void SerializeColumnHeaderTo<T>(Stream dst, char separator)
+        {
+            var writer = new StreamWriter(dst);
+            var properties = GetMarkedProperties(typeof(T));
+            foreach (var property in properties)
+            {
+                var name = property.GetCustomAttribute<CsvFieldAttribute>()!.Name;
+                writer.Write(name);
+                writer.Write(separator);
+            }
+            
+            writer.Flush();
+            
+            dst.Position -= 1;
+            dst.WriteByte((byte)'\n');
+        }
+
+        public static void SerializeRowTo<T>(Stream dst, char separator, T rowValue)
+        {
+            var writer = new StreamWriter(dst);
+            var properties = GetMarkedProperties(typeof(T));
+            foreach (var property in properties)
+            {
+                var value = property.GetValue(rowValue);
+                if (value is null)
+                    throw new CsvSerializationException($"Unable to serialize property {property.Name}. Value is null.");
+                
+                writer.Write(value.ToString());
+                writer.Write(separator);
+            }
+            
+            writer.Flush();
+            dst.Position -= 1;
+            dst.WriteByte((byte)'\n');
+        }
+        
         public string Serialize<T>(IEnumerable<T> src, char separator)
         {
             _workBuffer.Clear();

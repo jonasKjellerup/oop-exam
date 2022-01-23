@@ -10,14 +10,15 @@ using oop_exam.Util;
 
 namespace oop_exam
 {
-    public class Stregsystem : IStregsystem
+    public class Stregsystem : IStregsystem, IDisposable
     {
         public event UserBalanceNotification? UserBalanceWarning;
 
-        private List<User> _users; // TODO maintain type consistency between user and product collections
-        private Dictionary<uint, Product> _products;
-        private List<Transaction> _transactions = new();
+        private readonly List<User> _users;
+        private readonly Dictionary<uint, Product> _products;
+        private readonly List<Transaction> _transactions = new();
         private readonly IdDistributor _idDistributor = new();
+        private readonly FileStream _transactionLog;
 
         public Stregsystem()
         {
@@ -47,6 +48,14 @@ namespace oop_exam
                     products.Select(p => new KeyValuePair<uint, Product>(p.Id, p))
                 );
             }
+
+            var transactionLogFile = File.Open("transaction_log", FileMode.OpenOrCreate);
+            if (transactionLogFile.Length == 0)
+                CsvSerializer.SerializeColumnHeaderTo<Transaction>(transactionLogFile, ';');
+            
+            transactionLogFile.Seek(0, SeekOrigin.End);
+            
+            _transactionLog = transactionLogFile;
         }
 
         private void OnUserBalanceNotification(User user)
@@ -71,6 +80,7 @@ namespace oop_exam
             
             transaction.Execute();
             _transactions.Add(transaction);
+            CsvSerializer.SerializeRowTo(_transactionLog, ';', transaction);
         }
 
         public Product GetProductById(uint id)
@@ -126,5 +136,10 @@ namespace oop_exam
                 .Take(count);
 
         public IEnumerable<Product> ActiveProducts => _products.Values.Where(p => p.Active);
+
+        public void Dispose()
+        {
+            _transactionLog.Close();
+        }
     }
 }

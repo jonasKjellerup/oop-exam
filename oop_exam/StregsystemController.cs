@@ -7,18 +7,16 @@ namespace oop_exam
 {
     public class StregsystemController
     {
-        private readonly IStregsystemUI _ui;
-        private readonly IStregsystem _stregsystem;
         private readonly Dictionary<string, Action<string[]>> _adminCommands;
 
-        public IStregsystem Stregsystem => _stregsystem;
-        public IStregsystemUI Ui => _ui;
+        public IStregsystem Stregsystem { get; }
+        public IStregsystemUI Ui { get; }
 
         public StregsystemController(IStregsystemUI ui, IStregsystem stregsystem)
         {
-            _ui = ui;
-            _stregsystem = stregsystem;
-            _ui.CommandEntered += OnUserInput;
+            Ui = ui;
+            Stregsystem = stregsystem;
+            Ui.CommandEntered += OnUserInput;
 
             _adminCommands = new Dictionary<string, Action<string[]>>
             {
@@ -36,25 +34,25 @@ namespace oop_exam
         public Action<string[]>? GetAdminCommand(string name)
             => _adminCommands.TryGetValue(name, out var action) ? action : null;
 
-        private void Quit(IEnumerable<string> _) => _ui.Close();
+        private void Quit(IEnumerable<string> _) => Ui.Close();
 
         private void SetProductActivationState(bool state, string[] args)
         {
             if (args.Length > 1)
             {
-                _ui.DisplayTooManyArgumentsError(":activate/:deactivate");
+                Ui.DisplayTooManyArgumentsError(":activate/:deactivate");
                 return;
             }
 
             if (!uint.TryParse(args[0], out var productId))
             {
-                _ui.DisplayGeneralError("Expected product id to be a non-negative integer value.");
+                Ui.DisplayGeneralError("Expected product id to be a non-negative integer value.");
                 return;
             }
 
-            if (!_stregsystem.TryGetProductById(productId, out var product))
+            if (!Stregsystem.TryGetProductById(productId, out var product))
             {
-                _ui.DisplayProductNotFound(productId);
+                Ui.DisplayProductNotFound(productId);
                 return;
             }
             
@@ -65,19 +63,19 @@ namespace oop_exam
         {
             if (args.Length > 1)
             {
-                _ui.DisplayTooManyArgumentsError(":crediton/:creditoff");
+                Ui.DisplayTooManyArgumentsError(":crediton/:creditoff");
                 return;
             }
 
             if (!uint.TryParse(args[0], out var productId))
             {
-                _ui.DisplayGeneralError("Expected product id to be a non-negative integer value.");
+                Ui.DisplayGeneralError("Expected product id to be a non-negative integer value.");
                 return;
             }
 
-            if (!_stregsystem.TryGetProductById(productId, out var product))
+            if (!Stregsystem.TryGetProductById(productId, out var product))
             {
-                _ui.DisplayProductNotFound(productId);
+                Ui.DisplayProductNotFound(productId);
                 return;
             }
             
@@ -88,23 +86,23 @@ namespace oop_exam
         {
             if (args.Length > 2)
             {
-                _ui.DisplayTooManyArgumentsError(":addcredits");
+                Ui.DisplayTooManyArgumentsError(":addcredits");
                 return;
             }
 
-            if (!_stregsystem.TryGetUserByUsername(args[0], out var user))
+            if (!Stregsystem.TryGetUserByUsername(args[0], out var user))
             {
-                _ui.DisplayUserNotFound(args[0]);
+                Ui.DisplayUserNotFound(args[0]);
                 return;
             }
 
             if (!decimal.TryParse(args[1], out var amount))
             {
-                _ui.DisplayGeneralError("Second argument must be a valid number.");
+                Ui.DisplayGeneralError("Second argument must be a valid number.");
                 return;
             }
             
-            _stregsystem.AddCreditsToAccount(user, amount);
+            Stregsystem.AddCreditsToAccount(user, amount);
         }
 
         public void OnUserInput(string input)
@@ -116,7 +114,7 @@ namespace oop_exam
             }
             catch (Exception e)
             {
-                _ui.DisplayGeneralError(e.ToString());
+                Ui.DisplayGeneralError(e.Message);
             }
         }
     }

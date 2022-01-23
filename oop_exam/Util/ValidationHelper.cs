@@ -17,7 +17,7 @@ namespace oop_exam.Util
 
 		public static void LengthCheck(string value, string name, uint minLength, uint maxLength = uint.MaxValue)
 		{
-			if (value.Length <= minLength || value.Length >= maxLength)
+			if (value.Length < minLength || value.Length > maxLength)
 				throw new ArgumentException($"String {name} must have minimum length {minLength} and maximum length {maxLength}");
 		}
 

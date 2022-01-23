@@ -7,9 +7,11 @@ namespace oop_exam.Models
         public SeasonalProduct(uint id, string name, decimal price, DateTime seasonStartDate, DateTime seasonEndDate) :
             base(id, name, price)
         {
+            if (seasonStartDate < seasonEndDate is false)
+                throw new ArgumentException("SeasonEndDate for seasonal product must be af the starting date.");
+            
             SeasonStartDate = seasonStartDate;
             SeasonEndDate = seasonEndDate;
-            // TODO ensure start < end
         }
 
         public DateTime SeasonStartDate { get; set; }
@@ -17,10 +19,15 @@ namespace oop_exam.Models
 
         public override bool Active
         {
+            set => _active = value;
             get
             {
                 var now = DateTime.Now;
-                return SeasonStartDate <= now && now >= SeasonEndDate;
+                return _active switch
+                {
+                    true when SeasonStartDate <= now && now >= SeasonEndDate => true,
+                    _ => false
+                };
             }
         }
     }
